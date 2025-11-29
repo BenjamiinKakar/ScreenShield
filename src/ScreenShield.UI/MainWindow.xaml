@@ -4,19 +4,34 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:ScreenShield.UI.ViewModels"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=viewModels:MainViewModel}"
         Title="ScreenShield Control" Height="250" Width="400"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Visibility="Collapsed">
     <Grid>
+        <tb:TaskbarIcon
+            IconSource="/Assets/shield.ico"
+            ToolTipText="ScreenShield - Active"
+            MenuActivation="LeftClick"
+            TrayMouseDoubleClick="TaskbarIcon_TrayMouseDoubleClick">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Toggle Protection" Command="{Binding ToggleProtectionCommand}" />
+                    <MenuItem Header="Show" Command="{Binding ShowWindowCommand}" />
+                    <MenuItem Header="Exit" Command="{Binding ExitCommand}" />
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <Button Content="{Binding ToggleProtectionButtonText}" 
-                    Command="{Binding ToggleProtectionCommand}" 
+            <Button Content="{Binding ToggleProtectionButtonText}"
+                    Command="{Binding ToggleProtectionCommand}"
                     Padding="20,10"
                     FontSize="16"
                     MinWidth="200"/>
-            <TextBlock Text="{Binding StatusText}" 
-                       HorizontalAlignment="Center" 
+            <TextBlock Text="{Binding StatusText}"
+                       HorizontalAlignment="Center"
                        Margin="0,20,0,0"
                        FontSize="14"
                        TextWrapping="Wrap"/>

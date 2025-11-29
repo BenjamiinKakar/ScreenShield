@@ -40,7 +40,7 @@ public partial class App : Application
 
         // Show Main Window
         var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
-        mainWindow.Show();
+        // mainWindow.Show(); // We don't show it, the TaskbarIcon is the main entry.
     }
 
     private void ConfigureServices(IServiceCollection services)

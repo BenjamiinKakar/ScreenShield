@@ -124,6 +124,25 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    private void Exit()
+    {
+        Application.Current.Shutdown();
+    }
+
+    [RelayCommand]
+    private void ShowWindow()
+    {
+        Application.Current.MainWindow.Visibility = Visibility.Visible;
+        Application.Current.MainWindow.Activate();
+    }
+
+    [RelayCommand]
+    private void HideWindow()
+    {
+        Application.Current.MainWindow.Visibility = Visibility.Collapsed;
+    }
+
     public void Dispose()
     {
         _idleDetector.IdleDetected -= OnIdleDetected;

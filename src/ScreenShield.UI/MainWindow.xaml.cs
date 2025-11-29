@@ -1,4 +1,5 @@
 using ScreenShield.UI.ViewModels;
+using System.ComponentModel;
 using System.Windows;
 
 namespace ScreenShield.UI
@@ -9,6 +10,19 @@ namespace ScreenShield.UI
         {
             InitializeComponent();
             DataContext = viewModel;
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            e.Cancel = true;
+            this.Hide();
+            base.OnClosing(e);
+        }
+
+        private void TaskbarIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
+        {
+            this.Visibility = Visibility.Visible;
+            this.Activate();
         }
     }
 }
