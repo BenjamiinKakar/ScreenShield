@@ -1,17 +1,20 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ScreenShield.Core.Interfaces;
-using System.Collections.Generic;
+using ScreenShield.Core.Services;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace ScreenShield.UI.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IInputService _inputService;
     private readonly IMonitorService _monitorService;
     private readonly IWindowService _windowService;
+    private readonly IdleDetector _idleDetector;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ToggleProtectionButtonText))]
@@ -22,14 +25,40 @@ public partial class MainViewModel : ObservableObject
 
     public string ToggleProtectionButtonText => IsActive ? "Stop Protection" : "Start Protection";
 
-    public MainViewModel(IInputService inputService, IMonitorService monitorService, IWindowService windowService)
+    public MainViewModel(IInputService inputService, IMonitorService monitorService, IWindowService windowService, IdleDetector idleDetector)
     {
         _inputService = inputService;
         _monitorService = monitorService;
         _windowService = windowService;
+        _idleDetector = idleDetector;
 
-        StatusText = "Ready.";
+        _idleDetector.IdleDetected += OnIdleDetected;
+        _idleDetector.ActivityDetected += OnActivityDetected;
+
+        StatusText = "Start Protection";
         IsActive = false;
+    }
+
+    private void OnActivityDetected()
+    {
+        Application.Current.Dispatcher.Invoke(async () =>
+        {
+            if (IsActive)
+            {
+                await HideOverlaysAsync();
+            }
+        });
+    }
+
+    private void OnIdleDetected()
+    {
+        Application.Current.Dispatcher.Invoke(async () =>
+        {
+            if (IsActive)
+            {
+                await ShowOverlaysAsync();
+            }
+        });
     }
 
     [RelayCommand]
@@ -39,38 +68,67 @@ public partial class MainViewModel : ObservableObject
 
         if (IsActive)
         {
-            StatusText = "Starting protection...";
+            StatusText = "Protection Active (Waiting for Idle)";
+
+            // 1. Reset the timer so it counts from 0 right now.
+            _idleDetector.ResetTimer();
+
+            // 2. Start tracking the mouse.
             _inputService.StartHook();
-            var monitorResult = await _monitorService.GetMonitorsAsync();
-            if (monitorResult.IsSuccess)
-            {
-                var secondaryMonitors = monitorResult.Value.Where(m => !m.IsPrimary).ToList();
-                StatusText = $"Found {secondaryMonitors.Count} secondary monitor(s). Applying overlays...";
-                foreach (var monitor in secondaryMonitors)
-                {
-                    await _windowService.ShowOverlayAsync(monitor);
-                }
-                StatusText = $"Protection enabled on {secondaryMonitors.Count} monitor(s).";
-            }
-            else
-            {
-                StatusText = $"Error: {monitorResult.Error}";
-                IsActive = false; // Revert state on failure
-            }
+
+            // REMOVED: await ShowOverlaysAsync(); 
+            // Why? Because we are active right now! We let the IdleDetected event 
+            // handle the showing later.
         }
         else
         {
-            StatusText = "Stopping protection...";
+            StatusText = "Protection Paused";
+
+            // 1. Stop tracking to save CPU/Stability.
             _inputService.StopHook();
-            var monitorResult = await _monitorService.GetMonitorsAsync(); // Re-fetch to be safe
-            if (monitorResult.IsSuccess)
-            {
-                foreach (var monitor in monitorResult.Value)
-                {
-                    await _windowService.HideOverlayAsync(monitor);
-                }
-            }
-            StatusText = "Ready.";
+
+            // 2. Force hide the overlays immediately so you can work.
+            await HideOverlaysAsync();
         }
+    }
+
+    private async Task ShowOverlaysAsync()
+    {
+        var monitorResult = await _monitorService.GetMonitorsAsync();
+        if (monitorResult.IsSuccess)
+        {
+            var secondaryMonitors = monitorResult.Value.Where(m => !m.IsPrimary).ToList();
+            StatusText = $"Found {secondaryMonitors.Count} secondary monitor(s). Applying overlays...";
+            foreach (var monitor in secondaryMonitors)
+            {
+                await _windowService.ShowOverlayAsync(monitor);
+            }
+            StatusText = $"Protection enabled on {secondaryMonitors.Count} monitor(s).";
+        }
+        else
+        {
+            StatusText = $"Error: {monitorResult.Error}";
+            IsActive = false; // Revert state on failure
+        }
+    }
+
+    private async Task HideOverlaysAsync()
+    {
+        var monitorResult = await _monitorService.GetMonitorsAsync(); // Re-fetch to be safe
+        if (monitorResult.IsSuccess)
+        {
+            foreach (var monitor in monitorResult.Value)
+            {
+                await _windowService.HideOverlayAsync(monitor);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _idleDetector.IdleDetected -= OnIdleDetected;
+        _idleDetector.ActivityDetected -= OnActivityDetected;
+        _idleDetector.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

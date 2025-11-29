@@ -11,6 +11,8 @@ using System.Windows;
 using System.Windows.Threading;
 using ScreenShield.UI.Services;
 
+using ScreenShield.Core.Services;
+
 namespace ScreenShield.UI;
 
 public partial class App : Application
@@ -47,6 +49,7 @@ public partial class App : Application
         services.AddSingleton<IInputService, WindowsInputService>();
         services.AddSingleton<IMonitorService, WindowsMonitorService>();
         services.AddSingleton<IWindowService, WpfWindowService>();
+        services.AddSingleton<IdleDetector>();
 
         // ViewModels
         services.AddTransient<MainViewModel>();
